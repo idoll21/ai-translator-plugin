@@ -1,0 +1,12 @@
+        /* admin/src/index.css */
+
+        /* Tailwind CSS directives - these will be processed by Tailwind PostCSS plugin */
+        @tailwind base;
+        @tailwind components;
+        @tailwind utilities;
+
+        /* You can add any custom CSS here too */
+        body {
+          font-family: 'Inter', sans-serif; /* Example: ensure Inter font is used */
+        }
+        

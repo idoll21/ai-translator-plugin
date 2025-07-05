@@ -1,0 +1,26 @@
+{
+    "name": "baanel/ai-translator",
+    "description": "AI-powered WordPress theme and plugin translator.",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "Baanel",
+            "homepage": "https://baanel.ir"
+        }
+    ],
+    "require": {
+        "php": ">=7.4",
+        "gettext/gettext": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "AI_Translator\\": "includes/"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "composer/installers": true
+        }
+    }
+}

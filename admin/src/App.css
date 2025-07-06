@@ -1,0 +1,263 @@
+ /* admin/src/App.css */
+
+/* Importing Inter font from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Base styles for the entire app */
+body {
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f3f4f6; /* Light gray background */
+    color: #333;
+}
+
+/* General utility classes for consistency */
+.rounded-md {
+    border-radius: 0.375rem; /* Equivalent to Tailwind's rounded-md */
+}
+
+.shadow-sm {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* Equivalent to Tailwind's shadow-sm */
+}
+
+.shadow-md {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* Equivalent to Tailwind's shadow-md */
+}
+
+/* Specific styles for the admin wrap, matching the Tailwind classes in App.js */
+.ai-translator-admin.wrap {
+    padding: 1.5rem; /* p-6 */
+    background-color: #f3f4f6; /* bg-gray-100 */
+    min-height: 100vh; /* min-h-screen */
+}
+
+/* Flexbox for layout on medium screens and up */
+@media (min-width: 768px) {
+    .md\:flex {
+        display: flex;
+    }
+    .md\:space-x-6 > :not([hidden]) ~ :not([hidden]) {
+        margin-left: 1.5rem; /* space-x-6 */
+    }
+    .md\:w-64 {
+        width: 16rem; /* w-64 */
+    }
+    .md\:mb-0 {
+        margin-bottom: 0;
+    }
+}
+
+/* Sidebar styling */
+.ai-translator-admin .w-full {
+    width: 100%;
+}
+.ai-translator-admin .bg-white {
+    background-color: #fff;
+}
+.ai-translator-admin .p-6 {
+    padding: 1.5rem;
+}
+.ai-translator-admin .mb-6 {
+    margin-bottom: 1.5rem;
+}
+
+/* Navigation buttons */
+.ai-translator-admin nav button {
+    border: none;
+    cursor: pointer;
+    text-align: right; /* text-right */
+    padding-top: 0.75rem; /* py-3 */
+    padding-bottom: 0.75rem; /* py-3 */
+    padding-left: 1rem; /* px-4 */
+    padding-right: 1rem; /* px-4 */
+    border-radius: 0.375rem; /* rounded-md */
+    font-weight: 500; /* font-medium */
+    transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter; /* transition-colors */
+    transition-duration: 200ms; /* duration-200 */
+    display: flex;
+    align-items: center;
+    justify-content: flex-end; /* Align to the right for RTL */
+}
+
+.ai-translator-admin nav button svg {
+    margin-left: 0.5rem; /* ml-2 */
+}
+
+.ai-translator-admin nav button.bg-blue-600 {
+    background-color: #2563eb;
+    color: #fff;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.ai-translator-admin nav button.text-gray-700 {
+    color: #374151;
+}
+
+.ai-translator-admin nav button.hover\:bg-gray-100:hover {
+    background-color: #f3f4f6;
+}
+
+/* Main content area */
+.ai-translator-admin .flex-1 {
+    flex: 1 1 0%;
+}
+
+/* Dashboard cards */
+.ai-translator-admin .grid {
+    display: grid;
+}
+.ai-translator-admin .grid-cols-1 {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+@media (min-width: 768px) {
+    .ai-translator-admin .md\:grid-cols-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+@media (min-width: 1024px) {
+    .ai-translator-admin .lg\:grid-cols-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+.ai-translator-admin .gap-6 {
+    gap: 1.5rem;
+}
+
+/* Table styling */
+.ai-translator-admin .overflow-x-auto {
+    overflow-x: auto;
+}
+.ai-translator-admin .min-w-full {
+    min-width: 100%;
+}
+.ai-translator-admin .leading-normal {
+    line-height: 1.5;
+}
+.ai-translator-admin thead tr {
+    background-color: #f3f4f6; /* bg-gray-100 */
+    border-bottom-width: 2px; /* border-b-2 */
+    border-color: #e5e7eb; /* border-gray-200 */
+    color: #374151; /* text-gray-800 */
+    text-align: right; /* text-left - changed to right for RTL */
+    font-size: 0.875rem; /* text-sm */
+    font-weight: 600; /* font-semibold */
+    text-transform: uppercase; /* uppercase */
+    letter-spacing: 0.05em; /* tracking-wider */
+}
+.ai-translator-admin th, .ai-translator-admin td {
+    padding-left: 1.25rem; /* px-5 */
+    padding-right: 1.25rem; /* px-5 */
+    padding-top: 0.75rem; /* py-3 / py-4 */
+    padding-bottom: 0.75rem; /* py-3 / py-4 */
+    white-space: nowrap; /* Prevent text wrapping in table cells */
+}
+.ai-translator-admin tbody tr {
+    border-bottom-width: 1px; /* border-b */
+    border-color: #e5e7eb; /* border-gray-200 */
+}
+.ai-translator-admin tbody tr:hover {
+    background-color: #f9fafb; /* hover:bg-gray-50 */
+}
+
+/* Buttons */
+.ai-translator-admin button {
+    cursor: pointer;
+    transition: all 0.3s ease; /* transition duration-300 ease-in-out */
+}
+
+.ai-translator-admin button.hover\:scale-105:hover {
+    transform: scale(1.05);
+}
+
+.ai-translator-admin button.disabled\:opacity-50:disabled {
+    opacity: 0.5;
+}
+
+.ai-translator-admin button.disabled\:cursor-not-allowed:disabled {
+    cursor: not-allowed;
+}
+
+/* Modal styling */
+.fixed { position: fixed; }
+.inset-0 { top: 0; right: 0; bottom: 0; left: 0; }
+.bg-gray-600 { background-color: #4b5563; }
+.bg-opacity-75 { background-color: rgba(75, 85, 99, 0.75); }
+.overflow-y-auto { overflow-y: auto; }
+.h-full { height: 100%; }
+.w-full { width: 100%; }
+.z-50 { z-index: 50; }
+.flex { display: flex; }
+.justify-center { justify-content: center; }
+.items-center { align-items: center; }
+.p-4 { padding: 1rem; }
+.relative { position: relative; }
+.max-w-4xl { max-width: 56rem; } /* max-w-4xl */
+.max-w-2xl { max-width: 42rem; } /* max-w-2xl for rewrite modal */
+.rounded-lg { border-radius: 0.5rem; }
+.shadow-xl { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+
+/* Form elements */
+.ai-translator-admin input[type="text"],
+.ai-translator-admin input[type="url"],
+.ai-translator-admin select,
+.ai-translator-admin textarea {
+    border-width: 1px;
+    border-color: #d1d5db; /* border-gray-300 */
+    border-radius: 0.375rem; /* rounded-md */
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
+    padding: 0.5rem; /* p-2 */
+    width: 100%; /* w-full */
+    display: block; /* block */
+}
+
+.ai-translator-admin input:focus,
+.ai-translator-admin select:focus,
+.ai-translator-admin textarea:focus {
+    border-color: #60a5fa; /* focus:border-blue-500 */
+    box-shadow: 0 0 0 1px #60a5fa; /* focus:ring-blue-500 */
+    outline: none; /* remove default outline */
+}
+
+.ai-translator-admin textarea.bg-gray-100 {
+    background-color: #f3f4f6; /* bg-gray-100 */
+}
+
+/* Specific styles for elements in the editor modal */
+.ai-translator-admin .bg-gray-50 {
+    background-color: #f9fafb;
+}
+
+/* RTL adjustments */
+.ai-translator-admin nav button {
+    text-align: right;
+    justify-content: flex-end;
+}
+.ai-translator-admin nav button svg {
+    margin-right: 0; /* remove default left margin */
+    margin-left: 0.5rem; /* add right margin for RTL */
+}
+.ai-translator-admin th:first-child,
+.ai-translator-admin td:first-child {
+    text-align: right; /* Adjust table header/cell alignment for RTL */
+}
+
+/* Specific styles for error/success messages */
+.ai-translator-admin .bg-green-100 { background-color: #d1fae5; }
+.ai-translator-admin .text-green-700 { color: #047857; }
+.ai-translator-admin .bg-red-100 { background-color: #fee2e2; }
+.ai-translator-admin .text-red-700 { color: #b91c1c; }
+
+/* Spinner animation */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+

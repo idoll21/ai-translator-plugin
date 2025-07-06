@@ -1,0 +1,104 @@
+     name: Build and Package Plugin
+
+    on:
+      push:
+        branches:
+          - main # این Workflow با هر push به شاخه main اجرا می‌شود.
+      workflow_dispatch: # این به شما اجازه می‌دهد Workflow را به صورت دستی از تب Actions در گیت‌هاب اجرا کنید.
+
+    jobs:
+      build:
+        runs-on: ubuntu-latest # از یک محیط لینوکس (تمیز و با دسترسی کامل به اینترنت) برای ساخت استفاده می‌کند.
+
+        steps:
+        - name: Checkout code
+          uses: actions/checkout@v4 # کد مخزن شما را دانلود می‌کند.
+
+        - name: Set up PHP
+          uses: shivammathur/setup-php@v2
+          with:
+            php-version: '8.2' # نسخه PHP را مشخص کنید (مطابق با XAMPP شما).
+            extensions: mbstring, zip, dom, gd, curl, pdo_mysql # افزونه‌های PHP رایج مورد نیاز.
+            ini-values: post_max_size=256M, upload_max_filesize=256M, memory_limit=512M # محدودیت‌های PHP را افزایش می‌دهد.
+
+        - name: Get Composer Cache Directory
+          id: composer-cache
+          run: echo "dir=$(composer config cache-dir)" >> $GITHUB_OUTPUT
+
+        - name: Cache Composer dependencies
+          uses: actions/cache@v4
+          with:
+            path: ${{ steps.composer-cache.outputs.dir }}
+            key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+            restore-keys: ${{ runner.os }}-composer-
+
+        - name: Install Composer dependencies
+          run: composer install --no-dev --optimize-autoloader # وابستگی‌های تولید را نصب و اتولودر را بهینه می‌کند.
+
+        # بخش اختیاری: اگر پلاگین شما از Node.js/NPM برای فایل‌های فرانت‌اند (مثل React, Vue, Sass) استفاده می‌کند.
+        # اگر مطمئن نیستید، این بخش را نگه دارید. اگر package.json وجود نداشته باشد، این مراحل اجرا نمی‌شوند.
+        - name: Check for package.json and setup Node.js
+          id: check_package_json
+          run: |
+            if [ -f package.json ]; then
+              echo "PACKAGE_JSON_EXISTS=true" >> $GITHUB_OUTPUT
+            else
+              echo "PACKAGE_JSON_EXISTS=false" >> $GITHUB_OUTPUT
+            fi
+        - name: Set up Node.js
+          if: steps.check_package_json.outputs.PACKAGE_JSON_EXISTS == 'true'
+          uses: actions/setup-node@v4
+          with:
+            node-version: '20' # از یک نسخه پایدار Node.js (مثلاً 20.x) استفاده می‌کند.
+
+        - name: Install NPM dependencies and build assets
+          if: steps.check_package_json.outputs.PACKAGE_JSON_EXISTS == 'true'
+          run: |
+            npm install
+            npm run build # یا هر دستور build دیگری که در package.json شما تعریف شده است (مثلاً 'npm run dev', 'npm run prod').
+            # مطمئن شوید که package.json شما یک اسکریپت "build" تعریف شده دارد.
+
+        - name: Create plugin zip file
+          run: |
+            # نام پوشه پلاگین را (که همان نام مخزن است) بدست می‌آورد.
+            PLUGIN_SLUG=$(basename ${{ github.repository }})
+            # یک دایرکتوری موقت برای بسته‌بندی پلاگین ایجاد می‌کند.
+            mkdir -p ./package
+            # تمام فایل‌های لازم را کپی می‌کند (به جز فایل‌های گیت، نود_ماژول، وندور و...).
+            # اگر ساختار داخلی پلاگین شما متفاوت است، این دستور کپی را تنظیم کنید.
+            rsync -av --exclude '.git/' --exclude '.github/' --exclude 'node_modules/' --exclude 'vendor/' --exclude 'composer.json' --exclude 'composer.lock' --exclude 'package.json' --exclude 'package-lock.json' ./ ${{ github.workspace }}/package/${PLUGIN_SLUG}/
+            # فایل‌های پیکربندی را که برای نصب در وردپرس لازم هستند، دوباره اضافه می‌کند.
+            cp composer.json ${{ github.workspace }}/package/${PLUGIN_SLUG}/composer.json
+            cp composer.lock ${{ github.workspace }}/package/${PLUGIN_SLUG}/composer.lock
+            if [ -f package.json ]; then cp package.json ${{ github.workspace }}/package/${PLUGIN_SLUG}/package.json; fi
+            if [ -f package-lock.json ]; then cp package-lock.json ${{ github.workspace }}/package/${PLUGIN_SLUG}/package-lock.json; fi
+            # پوشه‌های تولید شده (vendor, node_modules) را اضافه می‌کند.
+            if [ -d "vendor" ]; then rsync -av vendor/ ${{ github.workspace }}/package/${PLUGIN_SLUG}/vendor/; fi
+            if [ -d "node_modules" ]; then rsync -av node_modules/ ${{ github.workspace }}/package/${PLUGIN_SLUG}/node_modules/; fi
+            # اگر پوشه 'build' یا 'dist' دارید و می‌خواهید در پکیج نهایی باشد، آن را هم اضافه کنید.
+            # مثال: if [ -d "build" ]; then rsync -av build/ ${{ github.workspace }}/package/${PLUGIN_SLUG}/build/; fi
+            # Zip کردن پکیج
+            cd ./package
+            zip -r ${PLUGIN_SLUG}.zip ${PLUGIN_SLUG}
+            ls -lh # لیست فایل‌ها برای تأیید اندازه فایل zip
+          working-directory: ${{ github.workspace }} # مطمئن می‌شود که در ریشه مخزن هستیم.
+
+        - name: Upload plugin artifact
+          uses: actions/upload-artifact@v4
+          with:
+            name: ai-translator-plugin # نام آرتیفکت (فایل zip)
+            path: ${{ github.workspace }}/package/*.zip # مسیر فایل zip تولید شده
+            retention-days: 7 # مدت زمان نگهداری آرتیفکت (اختیاری)
+
+        # اختیاری: ایجاد یک GitHub Release برای دانلود آسان‌تر
+        - name: Create Release
+          id: create_release
+          uses: softprops/action-gh-release@v1
+          if: startsWith(github.ref, 'refs/tags/') # فقط اگر یک تگ (مثلاً v1.0.0) push شود، Release ایجاد می‌کند.
+          with:
+            files: ${{ github.workspace }}/package/*.zip
+            name: Release ${{ github.ref_name }}
+            tag_name: ${{ github.ref_name }}
+            draft: false
+            prerelease: false
+    

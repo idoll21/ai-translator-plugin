@@ -1,36 +1,105 @@
-        name: Build WordPress Plugin
+name: Build and Package Plugin
 
-        on:
-          push:
-            branches:
-              - main # این Workflow با هر push به شاخه main اجرا می‌شود.
-          workflow_dispatch: # این به شما اجازه می‌دهد Workflow را به صورت دستی از تب Actions در گیت‌هاب اجرا کنید.
+on:
+  push:
+    branches:
+      - main # Trigger this workflow on pushes to the main branch
+  workflow_dispatch: # Allows manual triggering from GitHub Actions tab
 
-        jobs:
-          build:
-            runs-on: ubuntu-latest
-            steps:
-              - name: Checkout code
-                uses: actions/checkout@v4
+jobs:
+  build:
+    runs-on: ubuntu-latest # Use a Linux environment for the build
 
-              - name: Set up PHP
-                uses: shivammathur/setup-php@v2
-                with:
-                  php-version: '8.1' # یا هر نسخه PHP که پلاگین شما نیاز دارد
-                  extensions: mbstring, pdo_mysql
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4 # Action to checkout your repository code
 
-              - name: Install Composer dependencies
-                run: composer install --no-dev --prefer-dist
+    - name: Set up PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2' # Specify the PHP version for Composer (match your XAMPP PHP version)
+        extensions: mbstring, zip, dom, gd, curl, pdo_mysql # Common PHP extensions needed
+        ini-values: post_max_size=256M, upload_max_filesize=256M, memory_limit=512M # Increase limits if needed
 
-              - name: Create plugin zip
-                run: |
-                  zip -r ai-translator-plugin.zip . -x ".git/*" ".github/*" "vendor/*" "composer.json" "composer.lock" "*.md"
-                  # این دستور فایل zip را ایجاد می‌کند و پوشه‌های .git و .github و vendor را از آن حذف می‌کند.
-                  # همچنین فایل‌های composer.json، composer.lock و فایل‌های markdown را حذف می‌کند.
+    - name: Get Composer Cache Directory
+      id: composer-cache
+      run: echo "dir=$(composer config cache-dir)" >> $GITHUB_OUTPUT
 
-              - name: Upload plugin artifact
-                uses: actions/upload-artifact@v4
-                with:
-                  name: ai-translator-plugin
-                  path: ai-translator-plugin.zip
-        
+    - name: Cache Composer dependencies
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.composer-cache.outputs.dir }}
+        key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+        restore-keys: ${{ runner.os }}-composer-
+
+    - name: Install Composer dependencies
+      run: composer install --no-dev --optimize-autoloader # Install only production dependencies and optimize autoloader
+
+    # Optional: If your plugin uses Node.js/NPM for front-end assets (e.g., React, Vue, Sass)
+    - name: Check for package.json and setup Node.js
+      id: check_package_json
+      run: |
+        if [ -f package.json ]; then
+          echo "PACKAGE_JSON_EXISTS=true" >> $GITHUB_OUTPUT
+        else
+          echo "PACKAGE_JSON_EXISTS=false" >> $GITHUB_OUTPUT
+        fi
+    - name: Set up Node.js
+      if: steps.check_package_json.outputs.PACKAGE_JSON_EXISTS == 'true'
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20' # Use a stable Node.js version (e.g., 20.x)
+
+    - name: Install NPM dependencies and build assets
+      if: steps.check_package_json.outputs.PACKAGE_JSON_EXISTS == 'true'
+      run: |
+        npm install
+        npm run build # Or whatever your build command is (e.g., 'npm run dev', 'npm run prod')
+      # If your build command is different, change 'npm run build' accordingly.
+      # Make sure your package.json has a "build" script defined.
+
+    - name: Create plugin zip file
+      run: |
+        # Get the current plugin folder name (assuming it's the repo name)
+        PLUGIN_SLUG=$(basename ${{ github.repository }})
+        # Create a temporary directory to package the plugin
+        mkdir -p ./package
+        # Copy all necessary files (excluding .git, .github, node_modules, etc.)
+        # Adjust this copy command if your plugin has a different internal structure
+        rsync -av --exclude '.git/' --exclude '.github/' --exclude 'node_modules/' --exclude 'vendor/' --exclude 'composer.json' --exclude 'composer.lock' --exclude 'package.json' --exclude 'package-lock.json' ./ ${{ github.workspace }}/package/${PLUGIN_SLUG}/
+        # Re-add composer.json and composer.lock if you want them in the zip
+        cp composer.json ${{ github.workspace }}/package/${PLUGIN_SLUG}/composer.json
+        cp composer.lock ${{ github.workspace }}/package/${PLUGIN_SLUG}/composer.lock
+        # If package.json and package-lock.json exist, copy them
+        if [ -f package.json ]; then cp package.json ${{ github.workspace }}/package/${PLUGIN_SLUG}/package.json; fi
+        if [ -f package-lock.json ]; then cp package-lock.json ${{ github.workspace }}/package/${PLUGIN_SLUG}/package-lock.json; fi
+        # Copy the generated vendor and node_modules folders
+        if [ -d "vendor" ]; then rsync -av vendor/ ${{ github.workspace }}/package/${PLUGIN_SLUG}/vendor/; fi
+        if [ -d "node_modules" ]; then rsync -av node_modules/ ${{ github.workspace }}/package/${PLUGIN_SLUG}/node_modules/; fi
+        # If your build/dist folder exists, copy it
+        if [ -d "build" ]; then rsync -av build/ ${{ github.workspace }}/package/${PLUGIN_SLUG}/build/; fi
+        if [ -d "dist" ]; then rsync -av dist/ ${{ github.workspace }}/package/${PLUGIN_SLUG}/dist/; fi
+        # Zip the package
+        cd ./package
+        zip -r ${PLUGIN_SLUG}.zip ${PLUGIN_SLUG}
+        ls -lh # List files to confirm zip size
+      working-directory: ${{ github.workspace }} # Ensure we are at the root of the repo
+
+    - name: Upload plugin artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ai-translator-plugin # Name of the artifact
+        path: ${{ github.workspace }}/package/*.zip # Path to your generated zip file
+        retention-days: 7 # How long to keep the artifact
+
+    # Optional: Create a GitHub Release for easier download
+    - name: Create Release
+      id: create_release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/') # Only create release if a tag is pushed
+      with:
+        files: ${{ github.workspace }}/package/*.zip
+        name: Release ${{ github.ref_name }}
+        tag_name: ${{ github.ref_name }}
+        draft: false
+        prerelease: false

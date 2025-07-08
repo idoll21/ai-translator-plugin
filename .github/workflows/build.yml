@@ -21,69 +21,62 @@ jobs:
         extensions: mbstring, zip, dom, gd, curl, pdo_mysql # Common PHP extensions needed
         ini-values: post_max_size=256M, upload_max_filesize=256M, memory_limit=512M # Increase limits if needed
 
-    - name: Get Composer Cache Directory
-      id: composer-cache
-      run: echo "dir=$(composer config cache-dir)" >> $GITHUB_OUTPUT
-
-    - name: Cache Composer dependencies
-      uses: actions/cache@v4
-      with:
-        path: ${{ steps.composer-cache.outputs.dir }}
-        key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-        restore-keys: ${{ runner.os }}-composer-
-
-    - name: Install Composer dependencies
+    - name: Install Composer dependencies (PHP)
       run: composer install --no-dev --optimize-autoloader # Install only production dependencies and optimize autoloader
 
-    # Optional: If your plugin uses Node.js/NPM for front-end assets (e.g., React, Vue, Sass)
-    - name: Check for package.json and setup Node.js
-      id: check_package_json
+    # Node.js/NPM steps for assets in the 'admin' directory
+    - name: Check for admin/package.json and setup Node.js
+      id: check_admin_package_json
       run: |
-        if [ -f package.json ]; then
-          echo "PACKAGE_JSON_EXISTS=true" >> $GITHUB_OUTPUT
+        if [ -f admin/package.json ]; then
+          echo "ADMIN_PACKAGE_JSON_EXISTS=true" >> $GITHUB_OUTPUT
         else
-          echo "PACKAGE_JSON_EXISTS=false" >> $GITHUB_OUTPUT
+          echo "ADMIN_PACKAGE_JSON_EXISTS=false" >> $GITHUB_OUTPUT
         fi
     - name: Set up Node.js
-      if: steps.check_package_json.outputs.PACKAGE_JSON_EXISTS == 'true'
+      if: steps.check_admin_package_json.outputs.ADMIN_PACKAGE_JSON_EXISTS == 'true'
       uses: actions/setup-node@v4
       with:
         node-version: '20' # Use a stable Node.js version (e.g., 20.x)
 
-    - name: Install NPM dependencies and build assets
-      if: steps.check_package_json.outputs.PACKAGE_JSON_EXISTS == 'true'
+    - name: Install NPM dependencies and build assets in admin/
+      if: steps.check_admin_package_json.outputs.ADMIN_PACKAGE_JSON_EXISTS == 'true'
       run: |
         npm install
         npm run build # Or whatever your build command is (e.g., 'npm run dev', 'npm run prod')
-      # If your build command is different, change 'npm run build' accordingly.
-      # Make sure your package.json has a "build" script defined.
+      working-directory: admin/ # IMPORTANT: Run NPM commands in the 'admin' directory
 
     - name: Create plugin zip file
       run: |
-        # Get the current plugin folder name (assuming it's the repo name)
         PLUGIN_SLUG=$(basename ${{ github.repository }})
-        # Create a temporary directory to package the plugin
-        mkdir -p ./package
-        # Copy all necessary files (excluding .git, .github, node_modules, etc.)
-        # Adjust this copy command if your plugin has a different internal structure
-        rsync -av --exclude '.git/' --exclude '.github/' --exclude 'node_modules/' --exclude 'vendor/' --exclude 'composer.json' --exclude 'composer.lock' --exclude 'package.json' --exclude 'package-lock.json' ./ ${{ github.workspace }}/package/${PLUGIN_SLUG}/
-        # Re-add composer.json and composer.lock if you want them in the zip
-        cp composer.json ${{ github.workspace }}/package/${PLUGIN_SLUG}/composer.json
-        cp composer.lock ${{ github.workspace }}/package/${PLUGIN_SLUG}/composer.lock
-        # If package.json and package-lock.json exist, copy them
-        if [ -f package.json ]; then cp package.json ${{ github.workspace }}/package/${PLUGIN_SLUG}/package.json; fi
-        if [ -f package-lock.json ]; then cp package-lock.json ${{ github.workspace }}/package/${PLUGIN_SLUG}/package-lock.json; fi
-        # Copy the generated vendor and node_modules folders
-        if [ -d "vendor" ]; then rsync -av vendor/ ${{ github.workspace }}/package/${PLUGIN_SLUG}/vendor/; fi
-        if [ -d "node_modules" ]; then rsync -av node_modules/ ${{ github.workspace }}/package/${PLUGIN_SLUG}/node_modules/; fi
-        # If your build/dist folder exists, copy it
-        if [ -d "build" ]; then rsync -av build/ ${{ github.workspace }}/package/${PLUGIN_SLUG}/build/; fi
-        if [ -d "dist" ]; then rsync -av dist/ ${{ github.workspace }}/package/${PLUGIN_SLUG}/dist/; fi
+        ZIP_FILE_NAME="${PLUGIN_SLUG}.zip"
+        TEMP_DIR="${{ github.workspace }}/package/${PLUGIN_SLUG}"
+
+        mkdir -p "${TEMP_DIR}"
+
+        # Copy core plugin files, excluding hidden git/github folders and generated folders
+        rsync -av --exclude '.git/' --exclude '.github/' --exclude 'node_modules/' --exclude 'vendor/' ./ "${TEMP_DIR}/"
+
+        # Copy Composer dependencies (vendor folder) if it exists
+        if [ -d "vendor" ]; then
+          rsync -av vendor/ "${TEMP_DIR}/vendor/"
+        fi
+
+        # Copy Admin assets (node_modules and build/dist) if they exist
+        if [ -d "admin/node_modules" ]; then
+          rsync -av admin/node_modules/ "${TEMP_DIR}/admin/node_modules/"
+        fi
+        if [ -d "admin/build" ]; then
+          rsync -av admin/build/ "${TEMP_DIR}/admin/build/"
+        fi
+        if [ -d "admin/dist" ]; then
+          rsync -av admin/dist/ "${TEMP_DIR}/admin/dist/"
+        fi
+
         # Zip the package
-        cd ./package
-        zip -r ${PLUGIN_SLUG}.zip ${PLUGIN_SLUG}
+        cd "${TEMP_DIR}/.."
+        zip -r "${ZIP_FILE_NAME}" "${PLUGIN_SLUG}"
         ls -lh # List files to confirm zip size
-      working-directory: ${{ github.workspace }} # Ensure we are at the root of the repo
 
     - name: Upload plugin artifact
       uses: actions/upload-artifact@v4
